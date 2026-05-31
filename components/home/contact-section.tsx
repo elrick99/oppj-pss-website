@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { MapPin, Phone, Mail, Clock, Send } from "lucide-react"
+import { MapPin, Phone, Mail, Clock, Send, Loader2 } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
 
 const contactInfo = [
   {
@@ -42,11 +43,38 @@ export function ContactSection() {
     subject: "",
     message: "",
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission
-    console.log(formData)
+    setIsSubmitting(true)
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+
+      if (res.ok) {
+        toast({
+          variant: "success",
+          title: "Message envoyé !",
+          description: "Nous vous répondrons dans les plus brefs délais.",
+        })
+        setFormData({ firstName: "", lastName: "", email: "", subject: "", message: "" })
+      } else {
+        throw new Error()
+      }
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Erreur d'envoi",
+        description: "Impossible d'envoyer votre message. Veuillez réessayer.",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -122,6 +150,7 @@ export function ContactSection() {
                 <label className="block text-sm text-gray-500 mb-2">Email</label>
                 <input
                   type="email"
+                  required
                   placeholder="jean@exemple.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -144,6 +173,7 @@ export function ContactSection() {
                 <label className="block text-sm text-gray-500 mb-2">Message</label>
                 <textarea
                   rows={4}
+                  required
                   placeholder="Votre message..."
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
@@ -153,10 +183,17 @@ export function ContactSection() {
 
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 bg-royal text-white py-4 rounded-xl font-semibold hover:bg-royal-dark transition-colors"
+                disabled={isSubmitting}
+                className="w-full flex items-center justify-center gap-2 bg-royal text-white py-4 rounded-xl font-semibold hover:bg-royal-dark transition-colors disabled:opacity-70"
               >
-                Envoyer le message
-                <Send className="w-4 h-4" />
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    Envoyer le message
+                    <Send className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </form>
           </div>

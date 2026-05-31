@@ -1,80 +1,46 @@
 "use client"
 
-import { useState } from "react"
-import { Mail, Calendar, ChevronDown, ChevronUp } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Mail, Instagram, Phone, ChevronDown, ChevronUp } from "lucide-react"
 
-const bureauMembers = [
-  {
-    initials: "JKM",
-    name: "Jean-Koffi M.",
-    role: "Président",
-    bgColor: "bg-royal",
-    ringColor: "ring-gold-light",
-  },
-  {
-    initials: "AL",
-    name: "Ange Laurier",
-    role: "Vice-Présidente",
-    bgColor: "bg-gold",
-    ringColor: "ring-royal",
-  },
-  {
-    initials: "MK",
-    name: "Marie Kouadio",
-    role: "Secrétaire",
-    bgColor: "bg-royal-light",
-    ringColor: "ring-gold",
-  },
-  {
-    initials: "PY",
-    name: "Patrick Yao",
-    role: "Trésorier",
-    bgColor: "bg-gold-light",
-    ringColor: "ring-royal-dark",
-  },
-  {
-    initials: "SK",
-    name: "Sophie Koffi",
-    role: "Responsable Communication",
-    bgColor: "bg-royal",
-    ringColor: "ring-gold-light",
-  },
-  {
-    initials: "DA",
-    name: "David Aké",
-    role: "Responsable Liturgie",
-    bgColor: "bg-gold",
-    ringColor: "ring-royal",
-  },
-  {
-    initials: "EN",
-    name: "Esther N'Guessan",
-    role: "Responsable Formation",
-    bgColor: "bg-royal-light",
-    ringColor: "ring-gold",
-  },
-  {
-    initials: "JB",
-    name: "Joseph Brou",
-    role: "Responsable Action Sociale",
-    bgColor: "bg-gold-light",
-    ringColor: "ring-royal-dark",
-  },
-]
+type Membre = {
+  id: number
+  nom: string
+  prenom: string
+  poste: string
+  commission: string | null
+  photoUrl: string | null
+  bio: string | null
+  email: string | null
+  instagram: string | null
+  whatsapp: string | null
+}
 
+const BG_COLORS = ['bg-royal', 'bg-gold', 'bg-royal-light', 'bg-gold-light']
 const INITIAL_DISPLAY_COUNT = 4
 
 export function BureauSection() {
+  const [membres, setMembres] = useState<Membre[]>([])
   const [showAll, setShowAll] = useState(false)
-  const displayedMembers = showAll ? bureauMembers : bureauMembers.slice(0, INITIAL_DISPLAY_COUNT)
+
+  useEffect(() => {
+    fetch('/api/bureau')
+      .then(r => r.json())
+      .then((data: Membre[]) => { if (data?.length) setMembres(data) })
+      .catch(() => {})
+  }, [])
+
+  const displayed = showAll ? membres : membres.slice(0, INITIAL_DISPLAY_COUNT)
+  const initials = (m: Membre) => (m.prenom[0] || '') + (m.nom[0] || '')
+  const isLight = (i: number) => i % 4 >= 2
+
+  if (membres.length === 0) return null
+
   return (
     <section id="bureau" className="py-20 bg-off-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
         <div className="text-center mb-16">
-          <span className="text-gold text-xs font-bold tracking-[3px] uppercase">
-            NOTRE ÉQUIPE
-          </span>
+          <span className="text-gold text-xs font-bold tracking-[3px] uppercase">NOTRE ÉQUIPE</span>
           <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-black text-royal-dark mt-3 mb-4">
             Les membres du bureau
           </h2>
@@ -83,62 +49,67 @@ export function BureauSection() {
           </p>
         </div>
 
-        {/* Bureau Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {displayedMembers.map((member) => (
-            <div
-              key={member.name}
-              className="group bg-white rounded-3xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300"
-            >
-              {/* Avatar Section */}
-              <div className={`${member.bgColor} h-48 flex items-center justify-center relative`}>
-                <div className={`w-24 h-24 rounded-full ${member.bgColor === 'bg-royal' || member.bgColor === 'bg-royal-light' ? 'bg-gold-light/20' : 'bg-white/20'} ring-4 ${member.ringColor} flex items-center justify-center`}>
-                  <span className={`font-serif text-2xl font-bold ${member.bgColor === 'bg-royal' || member.bgColor === 'bg-royal-light' ? 'text-gold-light' : 'text-royal-dark'}`}>
-                    {member.initials}
+          {displayed.map((member, i) => {
+            const bg = BG_COLORS[i % 4]
+            const light = isLight(i)
+            return (
+              <div key={member.id}
+                className="group bg-white rounded-3xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300">
+                <div className={`${bg} h-48 flex items-center justify-center relative`}>
+                  {member.photoUrl ? (
+                    <img src={member.photoUrl} alt={`${member.prenom} ${member.nom}`}
+                      className="w-24 h-24 rounded-full object-cover ring-4 ring-white/30" />
+                  ) : (
+                    <div className={`w-24 h-24 rounded-full ${light ? 'bg-white/20' : 'bg-gold-light/20'} ring-4 ring-white/30 flex items-center justify-center`}>
+                      <span className={`font-serif text-2xl font-bold ${light ? 'text-royal-dark' : 'text-gold-light'}`}>
+                        {initials(member)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="p-6 text-center">
+                  <h3 className="font-semibold text-royal-dark text-lg mb-2">{member.prenom} {member.nom}</h3>
+                  <span className="inline-block bg-royal/8 text-royal text-xs font-semibold px-3 py-1 rounded-full">
+                    {member.poste}
                   </span>
+                  {member.commission && (
+                    <p className="text-gray-400 text-xs mt-1">{member.commission}</p>
+                  )}
+                  <div className="flex justify-center gap-2 mt-4">
+                    {member.email && (
+                      <a href={`mailto:${member.email}`}
+                        className="w-9 h-9 rounded-lg bg-royal/10 text-royal flex items-center justify-center hover:bg-royal hover:text-white transition-colors">
+                        <Mail className="w-4 h-4" />
+                      </a>
+                    )}
+                    {member.instagram && (
+                      <a href={`https://instagram.com/${member.instagram.replace('@', '')}`} target="_blank" rel="noreferrer"
+                        className="w-9 h-9 rounded-lg bg-royal/10 text-royal flex items-center justify-center hover:bg-royal hover:text-white transition-colors">
+                        <Instagram className="w-4 h-4" />
+                      </a>
+                    )}
+                    {member.whatsapp && (
+                      <a href={`https://wa.me/${member.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
+                        className="w-9 h-9 rounded-lg bg-royal/10 text-royal flex items-center justify-center hover:bg-royal hover:text-white transition-colors">
+                        <Phone className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              {/* Info Section */}
-              <div className="p-6 text-center">
-                <h3 className="font-semibold text-royal-dark text-lg mb-2">
-                  {member.name}
-                </h3>
-                <span className="inline-block bg-royal/8 text-royal text-xs font-semibold px-3 py-1 rounded-full">
-                  {member.role}
-                </span>
-
-                {/* Action buttons */}
-                <div className="flex justify-center gap-2 mt-4">
-                  <button className="w-9 h-9 rounded-lg bg-royal/10 text-royal flex items-center justify-center hover:bg-royal hover:text-white transition-colors">
-                    <Mail className="w-4 h-4" />
-                  </button>
-                  <button className="w-9 h-9 rounded-lg bg-royal/10 text-royal flex items-center justify-center hover:bg-royal hover:text-white transition-colors">
-                    <Calendar className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
-        {/* Voir plus button */}
-        {bureauMembers.length > INITIAL_DISPLAY_COUNT && (
+        {membres.length > INITIAL_DISPLAY_COUNT && (
           <div className="flex justify-center mt-10">
-            <button
-              onClick={() => setShowAll(!showAll)}
-              className="flex items-center gap-2 bg-white text-royal border-2 border-royal/20 px-6 py-3 rounded-full font-semibold text-sm hover:bg-royal hover:text-white hover:border-royal transition-all duration-300 shadow-sm"
-            >
+            <button onClick={() => setShowAll(!showAll)}
+              className="flex items-center gap-2 bg-white text-royal border-2 border-royal/20 px-6 py-3 rounded-full font-semibold text-sm hover:bg-royal hover:text-white hover:border-royal transition-all duration-300 shadow-sm">
               {showAll ? (
-                <>
-                  <ChevronUp className="w-4 h-4" />
-                  Voir moins
-                </>
+                <><ChevronUp className="w-4 h-4" />Voir moins</>
               ) : (
-                <>
-                  <ChevronDown className="w-4 h-4" />
-                  Voir plus ({bureauMembers.length - INITIAL_DISPLAY_COUNT} membres)
-                </>
+                <><ChevronDown className="w-4 h-4" />Voir plus ({membres.length - INITIAL_DISPLAY_COUNT} membres)</>
               )}
             </button>
           </div>

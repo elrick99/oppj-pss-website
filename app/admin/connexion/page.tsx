@@ -5,12 +5,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2, Shield } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
 
 export default function AdminLoginPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -19,16 +19,28 @@ export default function AdminLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setError("")
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // Demo: Check for admin credentials
-    if (formData.email === "admin@oppj.org" && formData.password === "admin123") {
-      router.push("/admin")
+
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    })
+
+    const data = await res.json()
+    if (res.ok && data.user?.role === 'admin') {
+      router.push('/admin')
+    } else if (res.ok) {
+      toast({
+        variant: "warning",
+        title: "Accès refusé",
+        description: "Ce compte n'a pas les droits administrateur.",
+      })
     } else {
-      setError("Identifiants incorrects")
+      toast({
+        variant: "destructive",
+        title: "Connexion impossible",
+        description: data.error || "Identifiants incorrects.",
+      })
     }
     setIsLoading(false)
   }
@@ -40,7 +52,7 @@ export default function AdminLoginPage() {
         <div className="absolute top-0 left-0 w-96 h-96 bg-royal/30 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-gold/10 rounded-full blur-3xl" />
       </div>
-      
+
       <div className="relative w-full max-w-md">
         <div className="bg-white rounded-3xl p-8 shadow-modal animate-fade-in-up">
           {/* Header */}
@@ -57,13 +69,6 @@ export default function AdminLoginPage() {
               Espace réservé aux administrateurs
             </p>
           </div>
-
-          {/* Error message */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-6 text-sm">
-              {error}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email */}

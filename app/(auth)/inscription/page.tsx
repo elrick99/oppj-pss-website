@@ -2,14 +2,14 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Loader2, Check } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Loader2, Check, CheckCircle } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
 
 export default function RegisterPage() {
-  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState(1)
+  const [registeredEmail, setRegisteredEmail] = useState("")
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -29,23 +29,58 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (step === 1) {
-      setStep(2)
-      return
-    }
-    
+
+    if (step === 1) { setStep(2); return }
+
     setIsLoading(true)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    router.push("/connexion?registered=true")
-    setIsLoading(false)
+
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nom: formData.lastName,
+        prenom: formData.firstName,
+        email: formData.email,
+        password: formData.password,
+        telephone: formData.phone || undefined,
+      }),
+    })
+
+    const data = await res.json()
+    if (res.ok) {
+      setRegisteredEmail(formData.email)
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Inscription impossible",
+        description: data.error || "Une erreur est survenue. Veuillez réessayer.",
+      })
+      setIsLoading(false)
+    }
   }
 
   const isStep1Valid = formData.firstName && formData.lastName && formData.email && formData.phone
   const isStep2Valid = formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && formData.acceptTerms
+
+  if (registeredEmail) {
+    return (
+      <div className="animate-fade-in-up text-center">
+        <div className="flex justify-center mb-4">
+          <CheckCircle className="w-16 h-16 text-green-500" />
+        </div>
+        <h1 className="font-serif text-2xl font-bold text-royal-dark mb-3">Compte créé !</h1>
+        <p className="text-gray-500 mb-2">
+          Un email d&apos;activation a été envoyé à <strong>{registeredEmail}</strong>.
+        </p>
+        <p className="text-gray-400 text-sm mb-8">
+          Cliquez sur le lien dans l&apos;email pour activer votre compte. Pensez à vérifier vos spams.
+        </p>
+        <Link href="/connexion" className="text-royal font-semibold hover:text-royal-dark">
+          Retour à la connexion
+        </Link>
+      </div>
+    )
+  }
 
   return (
     <div className="animate-fade-in-up">
@@ -58,12 +93,8 @@ export default function RegisterPage() {
       </div>
 
       <div className="text-center mb-8">
-        <h1 className="font-serif text-3xl font-bold text-royal-dark mb-2">
-          Inscription
-        </h1>
-        <p className="text-gray-500">
-          Rejoignez la communauté OPPJ
-        </p>
+        <h1 className="font-serif text-3xl font-bold text-royal-dark mb-2">Inscription</h1>
+        <p className="text-gray-500">Rejoignez la communauté OPPJ</p>
       </div>
 
       {/* Progress steps */}

@@ -2,6 +2,7 @@ import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import { HeroCarousel } from "@/components/home/hero-carousel"
 import { StatsBand } from "@/components/home/stats-band"
+import { AnnoncesSection } from "@/components/home/annonces-section"
 import { ObjectivesSection } from "@/components/home/objectives-section"
 import { BureauSection } from "@/components/home/bureau-section"
 import { ActivitiesSection } from "@/components/home/activities-section"
@@ -16,6 +17,7 @@ export default function Home() {
       <ObjectivesSection />
       <BureauSection />
       <ActivitiesSection />
+      <AnnoncesSection />
       <ContactSection />
       <Footer />
     </main>
