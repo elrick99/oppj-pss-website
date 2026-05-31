@@ -1,0 +1,166 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* OPPJ Primary Colors */
+  --royal: #1A3A8F;
+  --royal-dark: #0F2260;
+  --royal-light: #2451B8;
+  --royal-pale: rgba(26, 58, 143, 0.06);
+  
+  /* OPPJ Gold */
+  --gold: #D4A520;
+  --gold-light: #F0C84A;
+  --gold-glow: rgba(212, 165, 32, 0.45);
+  
+  /* Neutrals */
+  --off-white: #F8F7F3;
+  --footer-dark: #080F2A;
+  
+  /* Text Colors */
+  --text-dark: #1A1A2E;
+  --text-mid: #4A4A6A;
+  --text-light: #8A8AAA;
+  
+  /* Shadows */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.06);
+  --shadow-hover: 0 16px 40px rgba(26, 58, 143, 0.15);
+  --shadow-gold: 0 8px 24px rgba(212, 165, 32, 0.45);
+  --shadow-header: 0 2px 24px rgba(26, 58, 143, 0.3);
+  --shadow-modal: 0 24px 60px rgba(15, 34, 96, 0.25);
+  
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 999px;
+
+  --background: var(--off-white);
+  --foreground: var(--text-dark);
+  --card: #FFFFFF;
+  --card-foreground: var(--text-dark);
+  --popover: #FFFFFF;
+  --popover-foreground: var(--text-dark);
+  --primary: var(--royal);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--gold);
+  --secondary-foreground: var(--royal-dark);
+  --muted: var(--off-white);
+  --muted-foreground: var(--text-mid);
+  --accent: var(--gold);
+  --accent-foreground: var(--royal-dark);
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(26, 58, 143, 0.1);
+  --input: rgba(26, 58, 143, 0.15);
+  --ring: var(--royal);
+  --radius: 0.625rem;
+}
+
+@theme inline {
+  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+  --font-serif: var(--font-playfair), Georgia, serif;
+  --font-mono: 'Geist Mono', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  
+  /* OPPJ Custom Colors */
+  --color-royal: var(--royal);
+  --color-royal-dark: var(--royal-dark);
+  --color-royal-light: var(--royal-light);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-off-white: var(--off-white);
+  --color-footer: var(--footer-dark);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--off-white);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--royal);
+  border-radius: var(--radius-pill);
+}
+
+/* Animation keyframes */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(212, 165, 32, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(212, 165, 32, 0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.6s ease forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
