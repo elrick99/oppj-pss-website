@@ -5,6 +5,7 @@ const objectives = [
     description:
       "Approfondir la foi catholique des jeunes à travers des retraites, enseignements et célébrations eucharistiques régulières.",
     color: "from-royal to-royal-light",
+    iconBg: "from-royal to-royal-light",
   },
   {
     icon: "🤝",
@@ -12,6 +13,7 @@ const objectives = [
     description:
       "Créer des liens forts entre les jeunes de la paroisse dans un esprit de service mutuel et d'amour fraternel.",
     color: "from-gold to-gold-light",
+    iconBg: "from-gold to-gold-light",
   },
   {
     icon: "📈",
@@ -19,6 +21,7 @@ const objectives = [
     description:
       "Former des leaders capables de témoigner de leur foi dans tous les domaines de la société avec intégrité et compétence.",
     color: "from-royal-light to-royal",
+    iconBg: "from-royal-light to-royal",
   },
   {
     icon: "🌍",
@@ -26,6 +29,7 @@ const objectives = [
     description:
       "S'engager concrètement auprès des plus vulnérables à travers des projets caritatifs et des actions de solidarité.",
     color: "from-gold-light to-gold",
+    iconBg: "from-gold-light to-gold",
   },
 ]
 
@@ -57,7 +61,7 @@ export function ObjectivesSection() {
               <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${obj.color}`} />
 
               {/* Icon */}
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-royal to-royal-light flex items-center justify-center text-2xl mb-5">
+              <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${obj.iconBg} flex items-center justify-center text-2xl mb-5 shadow-sm`}>
                 {obj.icon}
               </div>
 
