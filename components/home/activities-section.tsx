@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Calendar, Pencil } from "lucide-react"
+import { Calendar, Ticket, ArrowRight } from "lucide-react"
 
 const activities = [
   {
@@ -137,17 +137,28 @@ export function ActivitiesSection() {
                       {activity.priceUnit}
                     </span>
                   </div>
-                  <Link 
+                  <Link
                     href={`/reservation/${activity.id}`}
                     className="flex items-center gap-2 bg-white text-royal border border-royal/20 px-4 py-2 rounded-full text-sm font-semibold hover:bg-royal hover:text-white transition-all"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Ticket className="w-3.5 h-3.5" />
                     {activity.price === "Gratuit" ? "Inscription" : "Réserver"}
                   </Link>
                 </div>
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Voir plus */}
+        <div className="flex justify-center mt-12">
+          <Link
+            href="/evenements"
+            className="inline-flex items-center gap-2.5 bg-royal text-white px-8 py-3.5 rounded-full font-semibold hover:bg-royal-dark transition-colors shadow-lg hover:shadow-xl"
+          >
+            Voir tous les événements
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       </div>
     </section>
