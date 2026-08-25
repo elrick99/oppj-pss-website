@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto'
 const MAX_SIZE_MB = Number(process.env.UPLOAD_MAX_SIZE_MB || 5)
 const UPLOAD_BASE = path.join(process.cwd(), 'public', 'uploads')
 
-type UploadFolder = 'evenements' | 'bureau' | 'slides' | 'qrcodes'
+type UploadFolder = 'evenements' | 'bureau' | 'slides' | 'qrcodes' | 'mouvements'
 
 export async function saveUploadedFile(file: File, folder: UploadFolder): Promise<string> {
   if (file.size > MAX_SIZE_MB * 1024 * 1024) {

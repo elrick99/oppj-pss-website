@@ -5,6 +5,8 @@ import { Facebook, Instagram, Youtube, Mail, Phone, MapPin, Loader2, Check } fro
 import { useState, useEffect } from "react"
 
 type Params = {
+  nom_organisation: string
+  slogan_court: string
   email_contact: string
   telephone: string
   adresse: string
@@ -16,6 +18,8 @@ type Params = {
 }
 
 const DEFAUT: Params = {
+  nom_organisation: 'OPPJ Jeunesse',
+  slogan_court: 'Sacrés Stigmates · Abidjan',
   email_contact: '',
   telephone: '',
   adresse: '',
@@ -30,6 +34,7 @@ const navigationLinks = [
   { label: "Accueil", href: "#accueil" },
   { label: "Nos objectifs", href: "#objectifs" },
   { label: "Le bureau", href: "#bureau" },
+  { label: "Mouvements", href: "/mouvements" },
   { label: "Activités", href: "#activites" },
   { label: "Contact", href: "#contact" },
 ]
@@ -114,9 +119,12 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-16">
           <div>
-            <h3 className="font-serif text-2xl font-bold mb-4">
-              <span className="text-gold">OPPJ</span> Jeunesse
+            <h3 className="font-serif text-2xl font-bold mb-4 text-white">
+              {params.nom_organisation || 'OPPJ Jeunesse'}
             </h3>
+            {params.slogan_court && (
+              <p className="text-gold/70 text-xs uppercase tracking-widest mb-3">{params.slogan_court}</p>
+            )}
             <p className="text-white/60 text-sm leading-relaxed mb-5">
               {params.description_footer}
             </p>

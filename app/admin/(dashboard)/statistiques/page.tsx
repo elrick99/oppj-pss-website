@@ -3,9 +3,10 @@ import {
   utilisateurs, evenements, reservationsInscriptions,
   newsletterAbonnes, annonces, anneePastorale
 } from '@/db/schema'
-import { eq, count, sum, gte, and, desc, sql, lt } from 'drizzle-orm'
-import { Users, Calendar, Ticket, TrendingUp, Mail, Megaphone } from 'lucide-react'
+import { eq, count, sum, gte, and, desc, sql, lt, isNotNull } from 'drizzle-orm'
+import { Users, Calendar, Ticket, TrendingUp, Mail, Megaphone, Clock, BarChart2, Venus, Mars } from 'lucide-react'
 import Link from 'next/link'
+import { StatsCharts } from '@/components/admin/stats-charts'
 
 function formatFCFA(val: number) {
   if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M FCFA`
@@ -37,33 +38,42 @@ const STATUT_NL: Record<string, { label: string; color: string }> = {
   desabonne:  { label: 'Désabonnés',  color: 'bg-gray-100 text-gray-500' },
 }
 
+const STATUT_USER: Record<string, { label: string; color: string }> = {
+  actif:      { label: 'Actifs',      color: 'bg-emerald-100 text-emerald-700' },
+  inactif:    { label: 'Inactifs',    color: 'bg-gray-100 text-gray-600' },
+  suspendu:   { label: 'Suspendus',   color: 'bg-red-100 text-red-700' },
+  en_attente: { label: 'En attente',  color: 'bg-yellow-100 text-yellow-700' },
+}
+
 const ROLE: Record<string, string> = {
   admin:    'Administrateur',
   membre:   'Membre',
   visiteur: 'Visiteur',
 }
 
+const JOURS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+const MONTH_FR = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
+
 export default async function StatistiquesPage() {
   const now = new Date()
-  const today = now.toISOString().slice(0, 10)
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10)
+  const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1).toISOString().slice(0, 10)
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().slice(0, 10)
 
   const [
     membresActifsR, membresTotalR,
-    resTotalR, resConfirmR,
-    revTotalR,
+    resTotalR, resConfirmR, revTotalR,
     revMoisR, revLastMoisR,
     resMoisR, resLastMoisR,
     nlConfirmR, nlTotalR,
-    annoncesActivesR,
-    evtPubliesR,
-    eventsByStatus,
-    reservationsByStatus,
-    membersByRole,
-    newsletterByStatus,
-    eventsData,
-    anneeActiveArr,
+    annoncesActivesR, evtPubliesR,
+    eventsByStatus, reservationsByStatus, membersByRole, newsletterByStatus,
+    membersByStatut,
+    eventsData, anneeActiveArr, monthlyRaw,
+    membersByGender, resByGender,
+    resByDayRaw, resByHourRaw,
+    memberGrowthRaw, eventsTypeRaw,
   ] = await Promise.all([
     db.select({ v: count() }).from(utilisateurs).where(eq(utilisateurs.statut, 'actif')),
     db.select({ v: count() }).from(utilisateurs),
@@ -82,6 +92,7 @@ export default async function StatistiquesPage() {
     db.select({ statut: reservationsInscriptions.statut, total: count(), revenus: sum(reservationsInscriptions.montantTotal) }).from(reservationsInscriptions).groupBy(reservationsInscriptions.statut),
     db.select({ role: utilisateurs.role, total: count() }).from(utilisateurs).groupBy(utilisateurs.role),
     db.select({ statut: newsletterAbonnes.statut, total: count() }).from(newsletterAbonnes).groupBy(newsletterAbonnes.statut),
+    db.select({ statut: utilisateurs.statut, total: count() }).from(utilisateurs).groupBy(utilisateurs.statut),
     db.select({
       id: evenements.id,
       titre: evenements.titre,
@@ -99,22 +110,106 @@ export default async function StatistiquesPage() {
     .orderBy(desc(evenements.dateDebut))
     .limit(20),
     db.select().from(anneePastorale).where(eq(anneePastorale.active, true)).limit(1),
+    db.select({
+      month: sql<string>`strftime('%Y-%m', created_at)`,
+      reservations: count(),
+      revenus: sum(reservationsInscriptions.montantTotal),
+    })
+    .from(reservationsInscriptions)
+    .where(gte(reservationsInscriptions.createdAt, sixMonthsAgo))
+    .groupBy(sql`strftime('%Y-%m', created_at)`)
+    .orderBy(sql`strftime('%Y-%m', created_at)`),
+
+    // Membres par sexe
+    db.select({ sexe: utilisateurs.sexe, total: count() })
+      .from(utilisateurs)
+      .where(isNotNull(utilisateurs.sexe))
+      .groupBy(utilisateurs.sexe),
+
+    // Inscriptions par sexe (via join utilisateur)
+    db.select({ sexe: utilisateurs.sexe, total: count() })
+      .from(reservationsInscriptions)
+      .innerJoin(utilisateurs, eq(reservationsInscriptions.utilisateurId, utilisateurs.id))
+      .where(and(eq(reservationsInscriptions.statut, 'confirme'), isNotNull(utilisateurs.sexe)))
+      .groupBy(utilisateurs.sexe),
+
+    // Inscriptions par jour de la semaine
+    db.select({
+      jour: sql<string>`strftime('%w', created_at)`,
+      total: count(),
+    })
+    .from(reservationsInscriptions)
+    .groupBy(sql`strftime('%w', created_at)`)
+    .orderBy(sql`strftime('%w', created_at)`),
+
+    // Inscriptions par heure
+    db.select({
+      heure: sql<string>`strftime('%H', created_at)`,
+      total: count(),
+    })
+    .from(reservationsInscriptions)
+    .groupBy(sql`strftime('%H', created_at)`)
+    .orderBy(sql`strftime('%H', created_at)`),
+
+    // Croissance membres sur 12 mois
+    db.select({
+      month: sql<string>`strftime('%Y-%m', created_at)`,
+      total: count(),
+    })
+    .from(utilisateurs)
+    .where(gte(utilisateurs.createdAt, twelveMonthsAgo))
+    .groupBy(sql`strftime('%Y-%m', created_at)`)
+    .orderBy(sql`strftime('%Y-%m', created_at)`),
+
+    // Répartition par type d'événement
+    db.select({ type: evenements.type, total: count() })
+      .from(evenements)
+      .where(isNotNull(evenements.type))
+      .groupBy(evenements.type),
   ])
 
-  const membresActifs  = membresActifsR[0].v
-  const membresTotal   = membresTotalR[0].v
-  const resTotal       = resTotalR[0].v
-  const resConfirm     = resConfirmR[0].v
-  const revTotal       = Number(revTotalR[0].v ?? 0)
-  const revMois        = Number(revMoisR[0].v ?? 0)
-  const revLastMois    = Number(revLastMoisR[0].v ?? 0)
-  const resMois        = resMoisR[0].v
-  const resLastMois    = resLastMoisR[0].v
-  const nlConfirmes    = nlConfirmR[0].v
-  const nlTotal        = nlTotalR[0].v
+  const membresActifs   = membresActifsR[0].v
+  const membresTotal    = membresTotalR[0].v
+  const resTotal        = resTotalR[0].v
+  const resConfirm      = resConfirmR[0].v
+  const revTotal        = Number(revTotalR[0].v ?? 0)
+  const revMois         = Number(revMoisR[0].v ?? 0)
+  const revLastMois     = Number(revLastMoisR[0].v ?? 0)
+  const resMois         = resMoisR[0].v
+  const resLastMois     = resLastMoisR[0].v
+  const nlConfirmes     = nlConfirmR[0].v
+  const nlTotal         = nlTotalR[0].v
   const annoncesActives = annoncesActivesR[0].v
-  const evtPublies     = evtPubliesR[0].v
-  const anneeActive    = anneeActiveArr[0]
+  const evtPublies      = evtPubliesR[0].v
+  const anneeActive     = anneeActiveArr[0]
+
+  const monthlyTrend = monthlyRaw.map(r => {
+    const [, m] = (r.month ?? '').split('-')
+    return { month: MONTH_FR[parseInt(m, 10) - 1] ?? r.month, reservations: r.reservations, revenus: Number(r.revenus ?? 0) }
+  })
+
+  const memberGrowth = memberGrowthRaw.map(r => {
+    const [, m] = (r.month ?? '').split('-')
+    return { month: MONTH_FR[parseInt(m, 10) - 1] ?? r.month, total: r.total }
+  })
+
+  // Fill missing days (0-6) with 0
+  const resByDay = Array.from({ length: 7 }, (_, i) => {
+    const found = resByDayRaw.find(r => r.jour === String(i))
+    return { jour: JOURS[i], total: found?.total ?? 0 }
+  })
+
+  // Fill missing hours (0-23) with 0
+  const resByHour = Array.from({ length: 24 }, (_, i) => {
+    const h = String(i).padStart(2, '0')
+    const found = resByHourRaw.find(r => r.heure === h)
+    return { heure: `${i}h`, total: found?.total ?? 0 }
+  })
+
+  const SEXE_LABELS: Record<string, string> = { homme: 'Hommes', femme: 'Femmes', autre: 'Autre' }
+  const genderData = membersByGender.map(r => ({ sexe: SEXE_LABELS[r.sexe ?? ''] ?? r.sexe, total: r.total }))
+  const genderResData = resByGender.map(r => ({ sexe: SEXE_LABELS[r.sexe ?? ''] ?? r.sexe, total: r.total }))
+  const totalWithGender = genderData.reduce((s, r) => s + r.total, 0)
 
   const revMoisTrend = revLastMois > 0 ? Math.round(((revMois - revLastMois) / revLastMois) * 100) : 0
   const resMoisTrend = resLastMois > 0 ? Math.round(((resMois - resLastMois) / resLastMois) * 100) : 0
@@ -123,6 +218,9 @@ export default async function StatistiquesPage() {
     .sort((a, b) => Number(b.revenus) - Number(a.revenus))
     .slice(0, 5)
     .filter(e => Number(e.revenus) > 0)
+
+  const peakDay = resByDay.reduce((max, r) => r.total > max.total ? r : max, resByDay[0])
+  const peakHour = resByHour.reduce((max, r) => r.total > max.total ? r : max, resByHour[0])
 
   const overviewCards = [
     { label: 'Membres actifs', value: membresActifs.toLocaleString('fr-FR'), sub: `sur ${membresTotal} inscrits`, icon: Users, color: 'bg-royal/10 text-royal' },
@@ -192,118 +290,254 @@ export default async function StatistiquesPage() {
         </div>
       </div>
 
-      {/* Breakdowns row */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Events by status */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="font-semibold text-royal-dark mb-5 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-royal" /> Événements par statut
-          </h2>
-          <div className="space-y-3">
-            {eventsByStatus.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-4">Aucun événement</p>
-            ) : eventsByStatus.map((item) => {
-              const s = STATUT_EVT[item.statut ?? ''] ?? { label: item.statut ?? '—', color: 'bg-gray-100 text-gray-600' }
-              return (
-                <div key={item.statut} className="flex items-center justify-between">
-                  <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${s.color}`}>{s.label}</span>
-                  <span className="text-lg font-bold text-gray-900">{item.total}</span>
-                </div>
-              )
-            })}
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* SECTION : COMPORTEMENT & ENGAGEMENT                         */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      <div>
+        <h2 className="font-semibold text-royal-dark text-lg mb-4 flex items-center gap-2">
+          <BarChart2 className="w-5 h-5 text-royal" /> Comportement &amp; engagement
+        </h2>
+
+        {/* Insights rapides */}
+        <div className="grid sm:grid-cols-2 gap-4 mb-6">
+          <div className="bg-white rounded-2xl p-5 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+              <Calendar className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-xs text-gray-400 uppercase tracking-wide">Meilleur jour d&apos;inscription</div>
+              <div className="text-xl font-bold text-royal-dark">{peakDay.jour}</div>
+              <div className="text-xs text-gray-400">{peakDay.total} inscriptions cumulées</div>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl p-5 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center flex-shrink-0">
+              <Clock className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-xs text-gray-400 uppercase tracking-wide">Heure de pointe</div>
+              <div className="text-xl font-bold text-royal-dark">{peakHour.heure}</div>
+              <div className="text-xs text-gray-400">{peakHour.total} inscriptions cumulées</div>
+            </div>
           </div>
         </div>
 
-        {/* Members by role */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="font-semibold text-royal-dark mb-5 flex items-center gap-2">
-            <Users className="w-4 h-4 text-royal" /> Membres par rôle
-          </h2>
-          <div className="space-y-4">
-            {membersByRole.map((item) => {
-              const pct = membresTotal > 0 ? Math.round((item.total / membresTotal) * 100) : 0
-              return (
-                <div key={item.role} className="space-y-1.5">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">{ROLE[item.role ?? ''] ?? item.role}</span>
-                    <span className="font-semibold text-gray-900">{item.total} <span className="text-gray-400 font-normal text-xs">({pct}%)</span></span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-royal rounded-full" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        {/* Charts: jour + heure */}
+        <StatsCharts
+          resByDay={resByDay}
+          resByHour={resByHour}
+          membersByRole={membersByRole.map(r => ({ role: r.role, total: r.total }))}
+          eventsByStatus={eventsByStatus.map(r => ({ statut: r.statut, total: r.total }))}
+          reservationsByStatus={reservationsByStatus.map(r => ({ statut: r.statut, total: r.total, revenus: r.revenus }))}
+          newsletterByStatus={newsletterByStatus.map(r => ({ statut: r.statut, total: r.total }))}
+          eventsData={eventsData.map(e => ({
+            titre: e.titre,
+            inscrits: Number(e.inscrits),
+            capacite: e.capacite,
+            revenus: Number(e.revenus),
+            totalRes: Number(e.totalRes),
+          }))}
+          monthlyTrend={monthlyTrend}
+          memberGrowth={memberGrowth}
+          genderData={genderData}
+          genderResData={genderResData}
+          membersByStatut={membersByStatut.map(r => ({ statut: r.statut, total: r.total }))}
+          eventsTypeData={eventsTypeRaw.map(r => ({ type: r.type ?? 'Non défini', total: r.total }))}
+        />
+      </div>
 
-        {/* Newsletter by status */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="font-semibold text-royal-dark mb-5 flex items-center gap-2">
-            <Mail className="w-4 h-4 text-royal" /> Newsletter
-          </h2>
-          <div className="space-y-3">
-            {newsletterByStatus.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-4">Aucun abonné</p>
-            ) : newsletterByStatus.map((item) => {
-              const s = STATUT_NL[item.statut ?? ''] ?? { label: item.statut ?? '—', color: 'bg-gray-100 text-gray-600' }
-              const pct = nlTotal > 0 ? Math.round((item.total / nlTotal) * 100) : 0
-              return (
-                <div key={item.statut} className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${s.color}`}>{s.label}</span>
-                    <span className="text-sm font-semibold text-gray-900">{item.total} <span className="text-gray-400 font-normal text-xs">({pct}%)</span></span>
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* SECTION : DÉMOGRAPHIE MEMBRES                               */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      <div>
+        <h2 className="font-semibold text-royal-dark text-lg mb-4 flex items-center gap-2">
+          <Users className="w-5 h-5 text-royal" /> Démographie des membres
+        </h2>
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Membres par rôle */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h3 className="font-semibold text-royal-dark mb-5 flex items-center gap-2">
+              <Users className="w-4 h-4 text-royal" /> Par rôle
+            </h3>
+            <div className="space-y-4">
+              {membersByRole.map((item) => {
+                const pct = membresTotal > 0 ? Math.round((item.total / membresTotal) * 100) : 0
+                return (
+                  <div key={item.role} className="space-y-1.5">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">{ROLE[item.role ?? ''] ?? item.role}</span>
+                      <span className="font-semibold text-gray-900">{item.total} <span className="text-gray-400 font-normal text-xs">({pct}%)</span></span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-royal rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
                   </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-sky-400 rounded-full" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-          <div className="mt-5 pt-4 border-t border-gray-100">
-            <Link href="/admin/newsletter" className="text-sm text-royal font-medium hover:text-royal-dark">
-              Gérer la newsletter →
-            </Link>
+
+          {/* Membres par statut */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h3 className="font-semibold text-royal-dark mb-5 flex items-center gap-2">
+              <Users className="w-4 h-4 text-royal" /> Par statut
+            </h3>
+            <div className="space-y-3">
+              {membersByStatut.length === 0 ? (
+                <p className="text-gray-400 text-sm text-center py-4">Aucun membre</p>
+              ) : membersByStatut.map((item) => {
+                const s = STATUT_USER[item.statut ?? ''] ?? { label: item.statut ?? '—', color: 'bg-gray-100 text-gray-600' }
+                const pct = membresTotal > 0 ? Math.round((item.total / membresTotal) * 100) : 0
+                return (
+                  <div key={item.statut} className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${s.color}`}>{s.label}</span>
+                      <span className="text-sm font-semibold text-gray-900">{item.total} <span className="text-gray-400 font-normal text-xs">({pct}%)</span></span>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-royal rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Répartition par sexe */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h3 className="font-semibold text-royal-dark mb-5 flex items-center gap-2">
+              <Mars className="w-4 h-4 text-royal" /> Par sexe
+            </h3>
+            {genderData.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-sm text-gray-400">Données non disponibles</p>
+                <p className="text-xs text-gray-300 mt-1">Les membres doivent renseigner leur sexe à l&apos;inscription</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {genderData.map((item) => {
+                  const pct = totalWithGender > 0 ? Math.round((item.total / totalWithGender) * 100) : 0
+                  const isHomme = item.sexe === 'Hommes'
+                  return (
+                    <div key={item.sexe} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {isHomme ? <Mars className="w-4 h-4 text-blue-500" /> : <Venus className="w-4 h-4 text-pink-500" />}
+                          <span className="text-sm text-gray-600">{item.sexe}</span>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">{item.total} <span className="text-gray-400 font-normal text-xs">({pct}%)</span></span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${isHomme ? 'bg-blue-500' : 'bg-pink-500'}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+                {totalWithGender < membresTotal && (
+                  <p className="text-xs text-gray-300 mt-2">{membresTotal - totalWithGender} membre(s) n&apos;ont pas renseigné leur sexe</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Reservations by status + Top events by revenue */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="font-semibold text-royal-dark mb-5 flex items-center gap-2">
-            <Ticket className="w-4 h-4 text-royal" /> Réservations par statut
-          </h2>
-          <div className="space-y-4">
-            {reservationsByStatus.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-4">Aucune réservation</p>
-            ) : reservationsByStatus.map((item) => {
-              const s = STATUT_RES[item.statut ?? ''] ?? { label: item.statut ?? '—', color: 'bg-gray-100 text-gray-600' }
-              const rev = Number(item.revenus ?? 0)
-              const pct = resTotal > 0 ? Math.round((item.total / resTotal) * 100) : 0
-              return (
-                <div key={item.statut} className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-2">
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* SECTION : ÉVÉNEMENTS & RÉSERVATIONS                         */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      <div>
+        <h2 className="font-semibold text-royal-dark text-lg mb-4 flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-royal" /> Événements &amp; réservations
+        </h2>
+
+        <div className="grid lg:grid-cols-3 gap-6 mb-6">
+          {/* Events by status */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h3 className="font-semibold text-royal-dark mb-5 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-royal" /> Événements par statut
+            </h3>
+            <div className="space-y-3">
+              {eventsByStatus.length === 0 ? (
+                <p className="text-gray-400 text-sm text-center py-4">Aucun événement</p>
+              ) : eventsByStatus.map((item) => {
+                const s = STATUT_EVT[item.statut ?? ''] ?? { label: item.statut ?? '—', color: 'bg-gray-100 text-gray-600' }
+                return (
+                  <div key={item.statut} className="flex items-center justify-between">
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${s.color}`}>{s.label}</span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {item.total}
-                      {rev > 0 && <span className="text-xs text-gray-400 font-normal ml-1">({formatFCFA(rev)})</span>}
-                    </span>
+                    <span className="text-lg font-bold text-gray-900">{item.total}</span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-royal rounded-full" style={{ width: `${pct}%` }} />
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Reservations by status */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h3 className="font-semibold text-royal-dark mb-5 flex items-center gap-2">
+              <Ticket className="w-4 h-4 text-royal" /> Réservations par statut
+            </h3>
+            <div className="space-y-4">
+              {reservationsByStatus.length === 0 ? (
+                <p className="text-gray-400 text-sm text-center py-4">Aucune réservation</p>
+              ) : reservationsByStatus.map((item) => {
+                const s = STATUT_RES[item.statut ?? ''] ?? { label: item.statut ?? '—', color: 'bg-gray-100 text-gray-600' }
+                const rev = Number(item.revenus ?? 0)
+                const pct = resTotal > 0 ? Math.round((item.total / resTotal) * 100) : 0
+                return (
+                  <div key={item.statut} className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${s.color}`}>{s.label}</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {item.total}
+                        {rev > 0 && <span className="text-xs text-gray-400 font-normal ml-1">({formatFCFA(rev)})</span>}
+                      </span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-royal rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Newsletter */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h3 className="font-semibold text-royal-dark mb-5 flex items-center gap-2">
+              <Mail className="w-4 h-4 text-royal" /> Newsletter
+            </h3>
+            <div className="space-y-3">
+              {newsletterByStatus.length === 0 ? (
+                <p className="text-gray-400 text-sm text-center py-4">Aucun abonné</p>
+              ) : newsletterByStatus.map((item) => {
+                const s = STATUT_NL[item.statut ?? ''] ?? { label: item.statut ?? '—', color: 'bg-gray-100 text-gray-600' }
+                const pct = nlTotal > 0 ? Math.round((item.total / nlTotal) * 100) : 0
+                return (
+                  <div key={item.statut} className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${s.color}`}>{s.label}</span>
+                      <span className="text-sm font-semibold text-gray-900">{item.total} <span className="text-gray-400 font-normal text-xs">({pct}%)</span></span>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-sky-400 rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="mt-5 pt-4 border-t border-gray-100">
+              <Link href="/admin/newsletter" className="text-sm text-royal font-medium hover:text-royal-dark">
+                Gérer la newsletter →
+              </Link>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="font-semibold text-royal-dark mb-5 flex items-center gap-2">
+        {/* Top events by revenue */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+          <h3 className="font-semibold text-royal-dark mb-5 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-royal" /> Top événements par revenus
-          </h2>
+          </h3>
           {topEventsByRevenue.length === 0 ? (
             <p className="text-center text-gray-400 text-sm py-8">Aucun revenu enregistré</p>
           ) : (

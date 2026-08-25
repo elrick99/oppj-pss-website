@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import { Mail, Instagram, Phone, ChevronDown, ChevronUp } from "lucide-react"
 
 type Membre = {
@@ -10,6 +11,7 @@ type Membre = {
   poste: string
   commission: string | null
   photoUrl: string | null
+  avatarUrl: string | null
   bio: string | null
   email: string | null
   instagram: string | null
@@ -32,6 +34,7 @@ export function BureauSection() {
 
   const displayed = showAll ? membres : membres.slice(0, INITIAL_DISPLAY_COUNT)
   const initials = (m: Membre) => (m.prenom[0] || '') + (m.nom[0] || '')
+  const photo = (m: Membre) => m.photoUrl || m.avatarUrl
   const isLight = (i: number) => i % 4 >= 2
 
   if (membres.length === 0) return null
@@ -57,9 +60,16 @@ export function BureauSection() {
               <div key={member.id}
                 className="group bg-white rounded-3xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300">
                 <div className={`${bg} h-48 flex items-center justify-center relative`}>
-                  {member.photoUrl ? (
-                    <img src={member.photoUrl} alt={`${member.prenom} ${member.nom}`}
-                      className="w-24 h-24 rounded-full object-cover ring-4 ring-white/30" />
+                  {photo(member) ? (
+                    <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-white/30 relative flex-shrink-0">
+                      <Image
+                        src={photo(member)!}
+                        alt={`${member.prenom} ${member.nom}`}
+                        fill
+                        sizes="96px"
+                        className="object-cover"
+                      />
+                    </div>
                   ) : (
                     <div className={`w-24 h-24 rounded-full ${light ? 'bg-white/20' : 'bg-gold-light/20'} ring-4 ring-white/30 flex items-center justify-center`}>
                       <span className={`font-serif text-2xl font-bold ${light ? 'text-royal-dark' : 'text-gold-light'}`}>

@@ -33,6 +33,7 @@ function ActivationBanner() {
 
 function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { refreshUser } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -51,8 +52,9 @@ function LoginForm() {
     const data = await res.json()
     if (res.ok) {
       await refreshUser()
+      const next = searchParams.get('next')
       if (data.user?.role === 'admin') router.push('/admin')
-      else router.push('/membre')
+      else router.push(next && next.startsWith('/') ? next : '/membre')
     } else {
       toast({
         variant: "destructive",

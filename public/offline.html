@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hors ligne — OPPJ Jeunesse</title>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #0F2260, #1A3A8F);
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #fff;
+    text-align: center;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+  .card { max-width: 360px; }
+  img { width: 84px; height: 84px; border-radius: 20px; margin-bottom: 20px; background: rgba(255,255,255,0.08); padding: 8px; }
+  h1 { font-size: 22px; margin: 0 0 10px; }
+  p { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.6; margin: 0 0 24px; }
+  button {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #D4A520; color: #0F2260; border: none;
+    padding: 12px 24px; border-radius: 999px; font-weight: 700;
+    font-size: 14px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <img src="/logo-oppj.png" alt="OPPJ" />
+    <h1>Vous êtes hors ligne</h1>
+    <p>Impossible de charger cette page. Vérifiez votre connexion internet et réessayez.</p>
+    <button onclick="location.reload()">Réessayer</button>
+  </div>
+</body>
+</html>

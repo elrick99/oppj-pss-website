@@ -1,9 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Save, Loader2, Check, Globe, Mail, Phone, MapPin, Facebook, Instagram, Youtube } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import Image from "next/image"
+import { Save, Loader2, Check, Globe, Mail, Phone, MapPin, Facebook, Instagram, Youtube, Upload, ImageIcon } from "lucide-react"
 
 type Params = {
+  nom_organisation: string
+  slogan_court: string
   email_contact: string
   telephone: string
   adresse: string
@@ -12,9 +15,12 @@ type Params = {
   instagram_url: string
   youtube_url: string
   copyright: string
+  logo_url: string
 }
 
 const DEFAUT: Params = {
+  nom_organisation: '',
+  slogan_court: '',
   email_contact: '',
   telephone: '',
   adresse: '',
@@ -23,6 +29,7 @@ const DEFAUT: Params = {
   instagram_url: '',
   youtube_url: '',
   copyright: '',
+  logo_url: '',
 }
 
 function Field({ label, icon: Icon, name, value, onChange, placeholder, type = 'text' }: {
@@ -56,6 +63,8 @@ export default function ParametresPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetch('/api/parametres')
@@ -63,6 +72,17 @@ export default function ParametresPage() {
       .then((data: Params) => setForm({ ...DEFAUT, ...data }))
       .finally(() => setLoading(false))
   }, [])
+
+  async function handleUploadLogo(file: File) {
+    setUploading(true)
+    const fd = new FormData()
+    fd.append("file", file)
+    fd.append("folder", "mouvements")
+    const res = await fetch("/api/upload", { method: "POST", body: fd })
+    const data = await res.json()
+    if (data.url) set('logo_url', data.url)
+    setUploading(false)
+  }
 
   function set(key: keyof Params, val: string) {
     setForm(f => ({ ...f, [key]: val }))
@@ -98,6 +118,33 @@ export default function ParametresPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+          <h2 className="font-semibold text-royal-dark text-sm uppercase tracking-wide">Logo OPPJ</h2>
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center bg-gray-50 overflow-hidden flex-shrink-0">
+              {form.logo_url ? (
+                <Image src={form.logo_url} alt="Logo OPPJ" width={80} height={80} className="object-cover w-full h-full" />
+              ) : (
+                <ImageIcon className="w-8 h-8 text-gray-300" />
+              )}
+            </div>
+            <div className="space-y-2">
+              <input type="file" ref={fileRef} className="hidden" accept="image/*"
+                onChange={e => e.target.files?.[0] && handleUploadLogo(e.target.files[0])} />
+              <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+                className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm hover:bg-gray-50 transition-colors disabled:opacity-60">
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                {uploading ? 'Upload en cours...' : 'Changer le logo'}
+              </button>
+              {form.logo_url && (
+                <button type="button" onClick={() => set('logo_url', '')}
+                  className="block text-xs text-red-500 hover:underline">Retirer le logo personnalisé</button>
+              )}
+              <p className="text-xs text-gray-400">PNG ou JPG recommandé · Le logo remplace le fichier par défaut sur tout le site</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
           <h2 className="font-semibold text-royal-dark text-sm uppercase tracking-wide">Coordonnées</h2>
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="Email de contact" icon={Mail} name="email_contact" value={form.email_contact}
@@ -122,7 +169,13 @@ export default function ParametresPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-          <h2 className="font-semibold text-royal-dark text-sm uppercase tracking-wide">Textes du footer</h2>
+          <h2 className="font-semibold text-royal-dark text-sm uppercase tracking-wide">Identité — Footer</h2>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="Nom de l'organisation" icon={Globe} name="nom_organisation" value={form.nom_organisation}
+              onChange={set} placeholder="OPPJ Jeunesse" />
+            <Field label="Slogan / sous-titre" icon={Globe} name="slogan_court" value={form.slogan_court}
+              onChange={set} placeholder="Sacrés Stigmates · Abidjan" />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
             <textarea

@@ -12,11 +12,11 @@ export async function POST(req: NextRequest) {
 
   if (!file) return NextResponse.json({ error: 'Aucun fichier' }, { status: 400 })
 
-  const validFolders = ['evenements', 'bureau', 'slides', 'qrcodes']
+  const validFolders = ['evenements', 'bureau', 'slides', 'qrcodes', 'mouvements']
   if (!validFolders.includes(folder)) return NextResponse.json({ error: 'Dossier invalide' }, { status: 400 })
 
   try {
-    const url = await saveUploadedFile(file, folder as 'evenements' | 'bureau' | 'slides' | 'qrcodes')
+    const url = await saveUploadedFile(file, folder as 'evenements' | 'bureau' | 'slides' | 'qrcodes' | 'mouvements')
     return NextResponse.json({ url })
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Upload échoué' }, { status: 400 })

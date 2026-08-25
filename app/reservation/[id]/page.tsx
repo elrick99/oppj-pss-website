@@ -25,6 +25,25 @@ function formatTime(d: string) {
   return new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
+function toGoogleCalendarDate(dateStr: string): string {
+  return new Date(dateStr).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+}
+
+function buildCalendarUrl(evt: Evenement): string {
+  const start = toGoogleCalendarDate(evt.dateDebut)
+  const end = evt.dateFin ? toGoogleCalendarDate(evt.dateFin) : start
+  const details = evt.descriptionCourte || ''
+  const location = [evt.lieu, evt.adresse].filter(Boolean).join(', ')
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: evt.titre,
+    dates: `${start}/${end}`,
+    details,
+    location,
+  })
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}
+
 export default function ReservationPage() {
   const params = useParams()
   const slug = params.id as string
@@ -148,12 +167,23 @@ export default function ReservationPage() {
               <p className="text-sm text-gray-400 mt-2">Présentez ce code le jour de l&apos;événement.</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 mb-8 text-left text-sm">
+            <div className="bg-white rounded-2xl p-5 mb-6 text-left text-sm">
               <div className="flex justify-between py-2 border-b border-gray-50"><span className="text-gray-500">Événement</span><span className="font-medium">{evt.titre}</span></div>
               <div className="flex justify-between py-2 border-b border-gray-50"><span className="text-gray-500">Date</span><span>{formatDate(evt.dateDebut)}</span></div>
               <div className="flex justify-between py-2 border-b border-gray-50"><span className="text-gray-500">Places</span><span>{quantity}</span></div>
               {!isFree && <div className="flex justify-between py-2 font-semibold"><span>Total</span><span className="text-royal">{total.toLocaleString('fr-FR')} FCFA</span></div>}
             </div>
+
+            {/* Bouton Ajouter au calendrier */}
+            <a
+              href={buildCalendarUrl(evt)}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold border-2 border-royal text-royal hover:bg-royal hover:text-white transition-all mb-6"
+            >
+              <Calendar className="w-5 h-5" />
+              Ajouter au calendrier Google
+            </a>
 
             <div className="flex gap-3">
               <Link href="/" className="flex-1 py-3 rounded-xl font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors text-center">

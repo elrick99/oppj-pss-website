@@ -4,6 +4,8 @@ import { utilisateurs, anneePastorale } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { hashPassword } from '@/lib/auth'
 import { sendActivationCompte } from '@/lib/email'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { validateOrigin } from '@/lib/csrf'
 import { z } from 'zod'
 import { randomBytes } from 'crypto'
 
@@ -13,12 +15,23 @@ const schema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   telephone: z.string().optional(),
+  sexe: z.enum(['homme', 'femme']).optional(),
+  mouvementId: z.number().int().positive().optional(),
 })
 
 export async function POST(req: NextRequest) {
+  if (!validateOrigin(req)) {
+    return NextResponse.json({ error: 'Requête non autorisée' }, { status: 403 })
+  }
+  const ip = getClientIp(req)
+  const { allowed } = rateLimit(`register:${ip}`, { windowMs: 60 * 60 * 1000, max: 5 })
+  if (!allowed) {
+    return NextResponse.json({ error: 'Trop de tentatives. Réessayez dans une heure.' }, { status: 429 })
+  }
+
   try {
     const body = await req.json()
-    const { nom, prenom, email, password, telephone } = schema.parse(body)
+    const { nom, prenom, email, password, telephone, sexe, mouvementId } = schema.parse(body)
 
     const [existing] = await db.select().from(utilisateurs).where(eq(utilisateurs.email, email))
     if (existing) {
@@ -31,7 +44,8 @@ export async function POST(req: NextRequest) {
     const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
     await db.insert(utilisateurs).values({
-      nom, prenom, email, passwordHash, telephone,
+      nom, prenom, email, passwordHash, telephone, sexe,
+      mouvementId: mouvementId ?? null,
       role: 'membre',
       statut: 'en_attente',
       tokenActivation,

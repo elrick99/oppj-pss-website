@@ -3,6 +3,8 @@ import { db } from '@/db'
 import { utilisateurs } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { comparePassword, signToken, setAuthCookie } from '@/lib/auth'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { validateOrigin } from '@/lib/csrf'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -11,6 +13,15 @@ const schema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  if (!validateOrigin(req)) {
+    return NextResponse.json({ error: 'Requête non autorisée' }, { status: 403 })
+  }
+  const ip = getClientIp(req)
+  const { allowed } = rateLimit(`login:${ip}`, { windowMs: 15 * 60 * 1000, max: 10 })
+  if (!allowed) {
+    return NextResponse.json({ error: 'Trop de tentatives. Réessayez dans 15 minutes.' }, { status: 429 })
+  }
+
   try {
     const body = await req.json()
     const { email, password } = schema.parse(body)

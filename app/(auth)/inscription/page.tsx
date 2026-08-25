@@ -1,31 +1,40 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Loader2, Check, CheckCircle } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Loader2, Check, CheckCircle, RefreshCw } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+
+interface Mouvement {
+  id: number
+  nom: string
+}
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isResending, setIsResending] = useState(false)
   const [step, setStep] = useState(1)
   const [registeredEmail, setRegisteredEmail] = useState("")
+  const [mouvements, setMouvements] = useState<Mouvement[]>([])
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
+    sexe: "",
     password: "",
     confirmPassword: "",
-    commission: "",
+    mouvementId: "",
     acceptTerms: false,
   })
 
-  const commissions = [
-    { id: "liturgie", label: "Commission Liturgie" },
-    { id: "evangelisation", label: "Commission Évangélisation" },
-    { id: "sociale", label: "Commission Action Sociale" },
-  ]
+  useEffect(() => {
+    fetch('/api/mouvements')
+      .then(r => r.json())
+      .then((data: Mouvement[]) => setMouvements(data))
+      .catch(() => {})
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,6 +52,8 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password,
         telephone: formData.phone || undefined,
+        sexe: formData.sexe || undefined,
+        mouvementId: formData.mouvementId ? Number(formData.mouvementId) : undefined,
       }),
     })
 
@@ -60,21 +71,56 @@ export default function RegisterPage() {
   }
 
   const isStep1Valid = formData.firstName && formData.lastName && formData.email && formData.phone
-  const isStep2Valid = formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && formData.acceptTerms
+  const isStep2Valid = formData.password.length >= 8 && formData.confirmPassword && formData.password === formData.confirmPassword && formData.acceptTerms
+
+  const handleResendActivation = async () => {
+    setIsResending(true)
+    try {
+      const res = await fetch('/api/auth/renvoyer-activation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: registeredEmail }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast({ title: "Email renvoyé !", description: "Vérifiez votre boîte mail (et vos spams)." })
+      } else {
+        toast({ variant: "destructive", title: "Erreur", description: data.error || "Impossible de renvoyer l'email." })
+      }
+    } finally {
+      setIsResending(false)
+    }
+  }
 
   if (registeredEmail) {
     return (
       <div className="animate-fade-in-up text-center">
         <div className="flex justify-center mb-4">
-          <CheckCircle className="w-16 h-16 text-green-500" />
+          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center">
+            <CheckCircle className="w-10 h-10 text-emerald-600" />
+          </div>
         </div>
         <h1 className="font-serif text-2xl font-bold text-royal-dark mb-3">Compte créé !</h1>
-        <p className="text-gray-500 mb-2">
-          Un email d&apos;activation a été envoyé à <strong>{registeredEmail}</strong>.
+        <p className="text-gray-600 mb-2">
+          Un email d&apos;activation a été envoyé à
         </p>
-        <p className="text-gray-400 text-sm mb-8">
-          Cliquez sur le lien dans l&apos;email pour activer votre compte. Pensez à vérifier vos spams.
-        </p>
+        <p className="font-semibold text-royal mb-4">{registeredEmail}</p>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700 mb-6 text-left">
+          <p className="font-medium mb-1">Que faire maintenant ?</p>
+          <ol className="list-decimal list-inside space-y-1 text-blue-600">
+            <li>Ouvrez votre boîte email</li>
+            <li>Cliquez sur le lien d&apos;activation dans notre email</li>
+            <li>Pensez à vérifier le dossier Spams si vous ne trouvez pas l&apos;email</li>
+          </ol>
+        </div>
+        <button
+          onClick={handleResendActivation}
+          disabled={isResending}
+          className="flex items-center gap-2 mx-auto text-sm text-gray-500 hover:text-royal transition-colors disabled:opacity-50 mb-6"
+        >
+          {isResending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          Renvoyer l&apos;email d&apos;activation
+        </button>
         <Link href="/connexion" className="text-royal font-semibold hover:text-royal-dark">
           Retour à la connexion
         </Link>
@@ -184,19 +230,42 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Commission */}
+            {/* Sexe */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Commission souhaitée (optionnel)
+                Sexe <span className="text-gray-400 font-normal">(optionnel)</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[{ value: 'homme', label: 'Homme' }, { value: 'femme', label: 'Femme' }].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, sexe: formData.sexe === opt.value ? '' : opt.value })}
+                    className={`py-2.5 rounded-xl text-sm font-medium border transition-all ${
+                      formData.sexe === opt.value
+                        ? 'bg-royal text-white border-royal'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-royal/50'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Mouvement */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Mouvement souhaité <span className="text-gray-400 font-normal">(optionnel)</span>
               </label>
               <select
-                value={formData.commission}
-                onChange={(e) => setFormData({ ...formData, commission: e.target.value })}
+                value={formData.mouvementId}
+                onChange={(e) => setFormData({ ...formData, mouvementId: e.target.value })}
                 className="w-full px-4 py-3.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-royal/20 focus:border-royal transition-all outline-none appearance-none"
               >
-                <option value="">Sélectionner une commission</option>
-                {commissions.map((c) => (
-                  <option key={c.id} value={c.id}>{c.label}</option>
+                <option value="">Sélectionner un mouvement</option>
+                {mouvements.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nom}</option>
                 ))}
               </select>
             </div>

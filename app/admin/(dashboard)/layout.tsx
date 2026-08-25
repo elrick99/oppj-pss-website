@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import {
   LayoutDashboard, Calendar, Users, Ticket, Settings, LogOut,
   BookOpen, ImageIcon, Target, Megaphone, Mail, Bell, UserCheck,
-  ChevronDown, Menu, X, BarChart3
+  ChevronDown, Menu, X, BarChart3, Church, Award, ClipboardList
 } from "lucide-react"
 import { useState } from "react"
 
@@ -16,11 +16,14 @@ const navItems = [
   { href: "/admin/annee-pastorale", label: "Année Pastorale", icon: BookOpen },
   { href: "/admin/evenements", label: "Événements", icon: Calendar },
   { href: "/admin/bureau", label: "Bureau", icon: Users },
+  { href: "/admin/mouvements", label: "Mouvements", icon: Church },
   { href: "/admin/slides", label: "Slides Accueil", icon: ImageIcon },
   { href: "/admin/objectifs", label: "Objectifs", icon: Target },
   { href: "/admin/annonces", label: "Annonces", icon: Megaphone },
   { href: "/admin/reservations", label: "Réservations", icon: Ticket },
   { href: "/admin/membres", label: "Membres", icon: UserCheck },
+  { href: "/admin/grades", label: "Grades & Barème", icon: Award },
+  { href: "/admin/sondages", label: "Sondages", icon: ClipboardList },
   { href: "/admin/newsletter", label: "Newsletter", icon: Mail },
   { href: "/admin/notifications", label: "Notifications", icon: Bell },
   { href: "/admin/parametres", label: "Paramètres", icon: Settings },
@@ -103,7 +106,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Desktop sidebar */}
-      <aside className="w-60 min-h-screen fixed left-0 top-0 hidden lg:flex flex-col">
+      <aside className="w-60 h-screen fixed left-0 top-0 hidden lg:flex flex-col">
         <Sidebar />
       </aside>
 

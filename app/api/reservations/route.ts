@@ -4,6 +4,7 @@ import { reservationsInscriptions, evenements, anneePastorale } from '@/db/schem
 import { eq, and, desc, sql } from 'drizzle-orm'
 import { requireAdmin, requireAuth } from '@/lib/auth'
 import { sendConfirmationReservation, sendNotificationNouvelleReservation } from '@/lib/email'
+import { validateOrigin } from '@/lib/csrf'
 import { z } from 'zod'
 import { randomBytes } from 'crypto'
 
@@ -45,6 +46,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!validateOrigin(req)) {
+    return NextResponse.json({ error: 'Requête non autorisée' }, { status: 403 })
+  }
   try {
     const body = await req.json()
     const data = schema.parse(body)

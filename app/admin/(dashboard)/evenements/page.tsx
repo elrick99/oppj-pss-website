@@ -6,6 +6,9 @@ import {
   Eye, Loader2, X, Upload,
 } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
+import { TableSkeleton } from "@/components/ui/table-skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
 
 type Evenement = {
   id: number
@@ -264,7 +267,7 @@ export default function EventsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Photo de couverture</label>
                 <div className="flex items-center gap-3">
                   {form.coverImageUrl && (
-                    <img src={form.coverImageUrl} alt="" className="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0" />
+                    <Image src={form.coverImageUrl} alt="Aperçu" width={48} height={48} className="rounded-lg object-cover border border-gray-200 shrink-0" />
                   )}
                   <button
                     type="button"
@@ -321,8 +324,8 @@ export default function EventsPage() {
 
       {/* Tableau */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 text-royal animate-spin" />
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <TableSkeleton rows={6} cols={5} />
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -409,10 +412,11 @@ export default function EventsPage() {
             </table>
           </div>
           {filteredEvents.length === 0 && (
-            <div className="px-6 py-12 text-center">
-              <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Aucun événement trouvé</p>
-            </div>
+            <EmptyState
+              icon={Calendar}
+              title="Aucun événement trouvé"
+              description={searchQuery || filter !== 'all' ? "Modifiez vos filtres de recherche." : "Créez votre premier événement pour commencer."}
+            />
           )}
         </div>
       )}

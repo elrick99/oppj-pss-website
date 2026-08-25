@@ -5,14 +5,17 @@ import { eq } from 'drizzle-orm'
 import { requireAdmin } from '@/lib/auth'
 
 const CLES_DEFAUT: Record<string, string> = {
+  nom_organisation: 'OPPJ Jeunesse',
+  slogan_court: 'Sacrés Stigmates · Abidjan',
   email_contact: '',
   telephone: '',
   adresse: '',
-  description_footer: "L'Office Paroissial de la Pastorale des Jeunes vous accueille.",
+  description_footer: "L'Office Paroissial de la Pastorale des Jeunes vous accueille. Rejoignez une communauté vibrante de jeunes catholiques engagés.",
   facebook_url: '',
   instagram_url: '',
   youtube_url: '',
   copyright: 'OPPJ Sacrés Stigmates',
+  logo_url: '',
 }
 
 export async function GET() {

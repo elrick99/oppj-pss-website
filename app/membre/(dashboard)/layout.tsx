@@ -12,8 +12,9 @@ import {
   LogOut,
   Menu,
   X,
-  Bell,
+  BarChart3,
 } from "lucide-react"
+import { NotificationsPanel } from "@/components/membre/notifications-panel"
 
 export default function MembreLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -22,6 +23,7 @@ export default function MembreLayout({ children }: { children: React.ReactNode }
   const navItems = [
     { href: "/membre", label: "Mon espace", icon: LayoutDashboard },
     { href: "/membre/activites", label: "Mes activités", icon: Calendar },
+    { href: "/membre/sondages", label: "Sondages", icon: BarChart3 },
     { href: "/membre/profil", label: "Mon profil", icon: User },
     { href: "/membre/carte", label: "Ma carte jeune", icon: CreditCard },
   ]
@@ -96,10 +98,7 @@ export default function MembreLayout({ children }: { children: React.ReactNode }
           <span className="font-serif font-bold text-white text-sm">Espace membre</span>
         </Link>
         <div className="flex items-center gap-2">
-          <button className="relative p-2 text-white/60 hover:text-white">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-gold rounded-full" />
-          </button>
+          <NotificationsPanel />
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-2 text-white/80 hover:text-white"

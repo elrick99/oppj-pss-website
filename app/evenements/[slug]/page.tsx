@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
+import type { Metadata } from "next"
 import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
+import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav"
 import { Calendar, MapPin, Ticket, ArrowLeft, Share2, QrCode } from "lucide-react"
 
 type Photo = { id: number; photoUrl: string; legende: string | null }
@@ -10,7 +13,7 @@ type Evenement = {
   dateDebut: string; dateFin: string | null; lieu: string | null; adresse: string | null
   type: string | null; prix: number; capacite: number | null; statut: string
   iconeEmoji: string | null; gradientCouleur: string | null; qrCodeUrl: string | null
-  qrDescriptionPartage: string | null; photos: Photo[]
+  qrDescriptionPartage: string | null; coverImageUrl: string | null; photos: Photo[]
 }
 
 async function getEvenement(slug: string): Promise<Evenement | null> {
@@ -21,6 +24,36 @@ async function getEvenement(slug: string): Promise<Evenement | null> {
     return res.json()
   } catch {
     return null
+  }
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const evt = await getEvenement(slug)
+  if (!evt) return { title: 'Événement introuvable — OPPJ' }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const description = evt.descriptionCourte || evt.description?.slice(0, 160) || `Rejoignez-nous pour ${evt.titre}`
+  const image = evt.coverImageUrl ? `${baseUrl}${evt.coverImageUrl}` : `${baseUrl}/og-default.png`
+
+  return {
+    title: `${evt.titre} — OPPJ Jeunesse`,
+    description,
+    alternates: { canonical: `/evenements/${slug}` },
+    openGraph: {
+      title: evt.titre,
+      description,
+      type: 'website',
+      url: `${baseUrl}/evenements/${slug}`,
+      locale: 'fr_CI',
+      images: [{ url: image, width: 1200, height: 630, alt: evt.titre }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: evt.titre,
+      description,
+      images: [image],
+    },
   }
 }
 
@@ -40,8 +73,41 @@ export default async function EvenementPage({ params }: { params: Promise<{ slug
   const shareUrl = `${baseUrl}/evenements/${evt.slug}`
   const shareText = evt.qrDescriptionPartage || `${evt.titre} — ${evt.lieu || 'OPPJ'}`
 
+  const eventJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: evt.titre,
+    description: evt.descriptionCourte || evt.description || evt.titre,
+    startDate: evt.dateDebut,
+    ...(evt.dateFin ? { endDate: evt.dateFin } : {}),
+    eventStatus: evt.statut === 'annule' ? 'https://schema.org/EventCancelled' : 'https://schema.org/EventScheduled',
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    location: {
+      '@type': 'Place',
+      name: evt.lieu || 'Paroisse Sacrés Stigmates',
+      address: evt.adresse || 'Abidjan, Côte d\'Ivoire',
+    },
+    image: [evt.coverImageUrl ? `${baseUrl}${evt.coverImageUrl}` : `${baseUrl}/og-default.png`],
+    organizer: {
+      '@type': 'Organization',
+      name: 'OPPJ Jeunesse',
+      url: baseUrl,
+    },
+    offers: {
+      '@type': 'Offer',
+      url: shareUrl,
+      price: evt.prix,
+      priceCurrency: 'XOF',
+      availability: 'https://schema.org/InStock',
+    },
+  }
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd) }}
+      />
       <Header />
       <main className="min-h-screen bg-gray-50">
         <div className={`h-64 md:h-80 bg-gradient-to-br ${evt.gradientCouleur || 'from-royal to-royal-light'} relative overflow-hidden`}>
@@ -65,6 +131,10 @@ export default async function EvenementPage({ params }: { params: Promise<{ slug
         </div>
 
         <div className="max-w-4xl mx-auto px-4 py-8 -mt-4">
+          <BreadcrumbNav
+            items={[{ label: 'Événements', href: '/evenements' }, { label: evt.titre }]}
+            className="mb-6"
+          />
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-2xl shadow-sm p-6">
@@ -79,9 +149,14 @@ export default async function EvenementPage({ params }: { params: Promise<{ slug
                   <h2 className="font-semibold text-royal-dark mb-4">Galerie photos</h2>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {evt.photos.map(photo => (
-                      <div key={photo.id} className="aspect-square rounded-xl overflow-hidden bg-gray-100">
-                        <img src={photo.photoUrl} alt={photo.legende || evt.titre}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                      <div key={photo.id} className="aspect-square rounded-xl overflow-hidden bg-gray-100 relative">
+                        <Image
+                          src={photo.photoUrl}
+                          alt={photo.legende || evt.titre}
+                          fill
+                          sizes="(max-width: 640px) 50vw, 33vw"
+                          className="object-cover hover:scale-105 transition-transform duration-300"
+                        />
                       </div>
                     ))}
                   </div>
@@ -95,7 +170,7 @@ export default async function EvenementPage({ params }: { params: Promise<{ slug
                     <h2 className="font-semibold text-royal-dark">QR Code de l&apos;événement</h2>
                   </div>
                   <div className="flex flex-col sm:flex-row items-center gap-6">
-                    <img src={evt.qrCodeUrl} alt="QR Code" className="w-36 h-36 rounded-xl border border-gray-100" />
+                    <Image src={evt.qrCodeUrl} alt="QR Code" width={144} height={144} className="rounded-xl border border-gray-100" />
                     <div className="space-y-3 w-full">
                       <p className="text-sm text-gray-500">Partagez cet événement facilement</p>
                       <div className="flex flex-wrap gap-2">
