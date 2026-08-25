@@ -22,6 +22,21 @@ yarn-error.log*
 # vercel
 .vercel
 
+# IDE
+/.idea
+
+# le projet utilise pnpm — pas de lockfile npm
+/package-lock.json
+
+# base de données SQLite locale (persistante sur le serveur via shared/, jamais versionnée)
+/oppj_database.db
+/oppj_database.db-shm
+/oppj_database.db-wal
+/oppj_database.db-journal
+
+# fichiers uploadés par les utilisateurs (persistants sur le serveur via shared/uploads)
+/public/uploads/**
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
